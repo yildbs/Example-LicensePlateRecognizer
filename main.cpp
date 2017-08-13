@@ -6,10 +6,72 @@
  */
 
 #include <iostream>
+#include <vector>
 
 #include <opencv2/highgui.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core.hpp>
+
+
+cv::Rect FindRect(std::vector<cv::Point> contour)
+{
+	cv::Rect outer;
+	int top, left, bot, right;
+	top = INT_MAX;
+	left = INT_MAX;
+	bot = 0;
+	right = 0;
+	for(auto& point : contour){
+		if(point.x < left){
+			left = point.x;
+		}else if(point.x > right){
+			right = point.x;
+		}
+		if(point.y < top){
+			top = point.y;
+		}else if(point.y > bot){
+			bot = point.y;
+		}
+	}
+	outer.x = left;
+	outer.y = top;
+	outer.width = right - left;
+	outer.height = bot - top;
+	return outer;
+}
+
+std::vector<cv::Rect>& FilterRects(cv::Size min, cv::Size max, std::vector<cv::Rect>& rects)
+{
+	std::vector<cv::Rect> filtered;
+	for(auto& rect : rects){
+		if(rect.width < min.width){
+			continue;
+		}
+		if(rect.height < min.height){
+			continue;
+		}
+		if(rect.width > max.width){
+			continue;
+		}
+		if(rect.height > max.height){
+			continue;
+		}
+		filtered.push_back(rect);
+	}
+	rects = filtered;
+	return rects;
+}
+
+
+void FindSequencedRect(std::vector<cv::Rect>& rects)
+{
+	int num_rects = rects.size();
+	for(int first=0;first<num_rects;first++){
+		for(int second=first+1;second<num_rects;second++){
+
+		}
+	}
+}
 
 int main()
 {
@@ -54,16 +116,36 @@ int main()
 
 
 	//TODO
-	cv::Mat contours;
-	cv::findContours( post_proc, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, Point(0, 0) );
+	std::vector<std::vector<cv::Point> > contours;
+	std::vector<cv::Vec4i> hierarchy;
+
+	/// Find contours
+	cv::findContours( post_proc, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_SIMPLE, cv::Point(0, 0) );
 
 	/// Draw contours
-	Mat drawing = Mat::zeros( canny_output.size(), CV_8UC3 );
-	for( int i = 0; i< contours.size(); i++ )
-	{
-	Scalar color = Scalar( rng.uniform(0, 255), rng.uniform(0,255), rng.uniform(0,255) );
-	drawContours( drawing, contours, i, color, 2, 8, hierarchy, 0, Point() );
+	cv::Mat contour;
+	image.copyTo(contour);
+
+	printf("contours.size() : %d\n", contours.size());
+
+	std::vector<cv::Rect> rects;
+
+	for(auto& points : contours){
+		auto rect = FindRect(points);
+		rects.push_back(rect);
 	}
+
+	FilterRects(cv::Size(20, 20), cv::Size(100, 100), rects);
+	printf("rects.size() : %d\n", rects.size());
+
+
+	for(auto& rect : rects){
+		cv::rectangle(contour, rect, cv::Scalar(255, 255, 255), 1, 8, 0);
+	}
+
+
+	cv::imshow("contour", contour);
+
 
 
 
